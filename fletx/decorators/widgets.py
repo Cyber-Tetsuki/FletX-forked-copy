@@ -23,7 +23,7 @@ from fletx.core import (
     FormFieldValidationRule
 )
 from fletx.widgets import Obx
-from fletx.utils import get_logger #, get_page
+from fletx.utils import get_logger  # , get_page
 
 logger = get_logger("FletX.WidgetDecorators")
 
@@ -32,8 +32,8 @@ logger = get_logger("FletX.WidgetDecorators")
 ##      REACTIVE BUILDER DECORATOR
 #####
 def obx(
-        builder_fn: Callable[...,Union[ft.Control,List[ft.Control]]]
-    ) -> Callable[[], ft.Control]:
+        builder_fn: Callable[..., Union[ft.Control, List[ft.Control]]]
+) -> Callable[[], ft.Control]:
     """
     Decorator that creates a reactive widget from a builder function.
     Returns the actual widget, not an Obx wrapper.
@@ -59,15 +59,14 @@ def obx(
 
     @wraps(builder_fn)
     def wrapper(*args, **kwargs):
-
         # Create a new builder function that calls the original with args
         def internal_builder():
             return builder_fn(*args, **kwargs)
-        
+
         # Create Obx wrapper and return the actual widget
         obx_wrapper = Obx(internal_builder)
-        return obx_wrapper 
-    
+        return obx_wrapper
+
     return wrapper
 
 
@@ -75,10 +74,10 @@ def obx(
 ##      REACTIVE CONTROL DECORATOR
 #####
 def reactive_control(
-    bindings: Union[Dict[str, Union[str, BindingConfig]], Dict[str, str]] = None,
-    computed_bindings: Dict[str, ComputedBindingConfig] = None,
-    lifecycle_callbacks: Dict[str, Callable] = None,
-    auto_dispose: bool = True
+        bindings: Union[Dict[str, Union[str, BindingConfig]], Dict[str, str]] = None,
+        computed_bindings: Dict[str, ComputedBindingConfig] = None,
+        lifecycle_callbacks: Dict[str, Callable] = None,
+        auto_dispose: bool = True
 ):
     """
     Advanced decorator that creates reactive controls with sophisticated binding options.
@@ -131,7 +130,6 @@ def reactive_control(
     if lifecycle_callbacks is None:
         lifecycle_callbacks = {}
 
-
     def decorator(ControlClass):
 
         # Store original methods
@@ -170,24 +168,24 @@ def reactive_control(
             """Validate that required reactive attributes exist"""
 
             type_hints = get_type_hints(ControlClass)
-            
+
             for widget_prop, binding in bindings.items():
                 if isinstance(binding, str):
                     rx_name = binding
                 else:
                     rx_name = binding.reactive_attr
-                
+
                 if not hasattr(self, rx_name):
                     raise AttributeError(
                         f"Reactive attribute '{rx_name}' not found in {ControlClass.__name__}"
                     )
-                
+
                 reactive_obj = getattr(self, rx_name)
                 if not isinstance(reactive_obj, (Reactive, RxInt, RxStr, RxBool, RxList, RxDict)):
                     raise TypeError(
                         f"Attribute '{rx_name}' must be a reactive type, got {type(reactive_obj)}"
                     )
-                
+
         def _setup_bindings(self):
             """Setup reactive bindings with advanced features"""
 
@@ -197,83 +195,83 @@ def reactive_control(
                     binding_config = BindingConfig(reactive_attr=binding)
                 else:
                     binding_config = binding
-                
+
                 self._setup_single_binding(widget_prop, binding_config)
 
         def _setup_single_binding(
-            self, 
-            widget_prop: str, 
-            config: BindingConfig
+                self,
+                widget_prop: str,
+                config: BindingConfig
         ):
             """Setup a single reactive binding"""
 
             reactive_obj = getattr(self, config.reactive_attr)
-            
+
             if config.binding_type == BindingType.ONE_TIME:
                 # One-time binding
                 self._apply_one_time_binding(widget_prop, reactive_obj, config)
             else:
                 # Reactive binding
                 callback = self._create_binding_callback(widget_prop, config)
-                
+
                 # Apply debouncing/throttling if specified
                 if config.debounce_ms:
                     callback = self._debounce(callback, config.debounce_ms)
 
                 elif config.throttle_ms:
                     callback = self._throttle(callback, config.throttle_ms)
-                
+
                 observer = reactive_obj.listen(callback, auto_dispose=False)
                 self._binding_observers[widget_prop] = observer
-                
+
                 # Setup two-way binding if needed
                 if config.binding_type == BindingType.TWO_WAY:
                     self._setup_two_way_binding(widget_prop, config, reactive_obj)
-                
+
                 # Initial value
                 callback()
-        
+
         def _create_binding_callback(
-            self, 
-            widget_prop: str, 
-            config: BindingConfig
+                self,
+                widget_prop: str,
+                config: BindingConfig
         ):
             """Create a callback for reactive binding"""
 
             def callback():
                 if not self._is_mounted:
                     return
-                
+
                 reactive_obj = getattr(self, config.reactive_attr)
                 new_value = reactive_obj.value
-                
+
                 # Apply condition check
                 if config.condition and not config.condition():
                     return
-                
+
                 # Apply validation
                 if config.validation and not config.validation(new_value):
                     logger.warning(
                         f"Validation failed for {widget_prop}: {new_value}"
                     )
                     return
-                
+
                 # Transform value for widget
                 if config.transform_to_widget:
                     new_value = config.transform_to_widget(new_value)
-                
+
                 # Get old value for change callback
                 old_value = getattr(self, widget_prop, None)
-                
+
                 # Update widget property
                 setattr(self, widget_prop, new_value)
-                
+
                 # Call change callback
                 if config.on_change:
                     config.on_change(old_value, new_value)
 
                 # self.content = self.build()
-                
+
                 # Update the widget
                 self.update()
 
@@ -281,30 +279,30 @@ def reactive_control(
                     f"Updated {widget_prop} from reactive "
                     f"{config.reactive_attr}: {new_value}"
                 )
-            
+
             return callback
-        
+
         def _apply_one_time_binding(
-            self, 
-            widget_prop: str, 
-            reactive_obj: Reactive, 
-            config: BindingConfig
+                self,
+                widget_prop: str,
+                reactive_obj: Reactive,
+                config: BindingConfig
         ):
             """Apply one-time binding"""
 
             value = reactive_obj.value
-            
+
             if config.transform_to_widget:
                 value = config.transform_to_widget(value)
-            
+
             setattr(self, widget_prop, value)
             logger.debug(f"Applied one-time binding {widget_prop}: {value}")
 
         def _setup_two_way_binding(
-            self, 
-            widget_prop: str, 
-            config: BindingConfig, 
-            reactive_obj: Reactive
+                self,
+                widget_prop: str,
+                config: BindingConfig,
+                reactive_obj: Reactive
         ):
             """Setup two-way binding for supported widgets"""
 
@@ -312,21 +310,21 @@ def reactive_control(
             # we'd need to handle specific widget events Later :-)
             if hasattr(self, 'on_change'):
                 original_on_change = self.on_change
-                
+
                 def on_change_handler(e):
                     widget_value = getattr(self, widget_prop)
-                    
+
                     # Transform value from widget
                     if config.transform_from_widget:
                         widget_value = config.transform_from_widget(widget_value)
-                    
+
                     # Update reactive
                     reactive_obj.value = widget_value
-                    
+
                     # Call original handler
                     if original_on_change:
                         original_on_change(e)
-                
+
                 self.on_change = on_change_handler
 
         def _setup_computed_bindings(self):
@@ -334,114 +332,114 @@ def reactive_control(
             for widget_prop, config in computed_bindings.items():
                 # Create dependencies list
                 deps = [getattr(self, dep_name) for dep_name in config.dependencies]
-                
+
                 # Create computed reactive
                 from fletx.core.state import Computed
                 computed = Computed(
                     lambda: config.compute_fn(),
                     dependencies=deps
                 )
-                
+
                 self._computed_reactives[widget_prop] = computed
-                
+
                 # Setup binding for computed value
                 def computed_callback():
                     if not self._is_mounted:
                         return
-                    
+
                     value = computed.value
-                    
+
                     if config.transform:
                         value = config.transform(value)
-                    
+
                     old_value = getattr(self, widget_prop, None)
                     setattr(self, widget_prop, value)
-                    
+
                     if config.on_change:
                         config.on_change(old_value, value)
-                    
+
                     self.update()
-                
+
                 observer = computed.listen(computed_callback, auto_dispose=False)
                 self._binding_observers[f"computed_{widget_prop}"] = observer
-                
+
                 # Initial value
                 computed_callback()
 
         def _debounce(self, func: Callable, delay_ms: int):
             """Create debounced version of function"""
             import asyncio
-            
+
             def debounced():
                 if hasattr(self, '_debounce_tasks'):
                     if func in self._debounce_tasks:
                         self._debounce_tasks[func].cancel()
                 else:
                     self._debounce_tasks = {}
-                
+
                 async def delayed_call():
                     await asyncio.sleep(delay_ms / 1000)
                     func()
-                
+
                 task = asyncio.create_task(delayed_call())
                 self._debounce_tasks[func] = task
-            
+
             return debounced
-        
+
         def _throttle(self, func: Callable, interval_ms: int):
             """Create throttled version of function"""
             import time
-            
+
             def throttled():
                 now = time.time()
                 if not hasattr(self, '_throttle_last_calls'):
                     self._throttle_last_calls = {}
-                
-                if (func not in self._throttle_last_calls or 
-                    now - self._throttle_last_calls[func] >= interval_ms / 1000):
+
+                if (func not in self._throttle_last_calls or
+                        now - self._throttle_last_calls[func] >= interval_ms / 1000):
                     self._throttle_last_calls[func] = now
                     func()
-            
+
             return throttled
-        
+
         def did_mount(self):
             """Enhanced did_mount with lifecycle callbacks"""
 
             if original_did_mount:
                 original_did_mount(self)
-            
+
             if 'did_mount' in lifecycle_callbacks:
                 lifecycle_callbacks['did_mount'](self)
-            
+
             FletXWidget.did_mount(self)
-            
+
             logger.debug(f"Mounted reactive control {ControlClass.__name__}")
 
         def will_unmount(self):
             """Enhanced will_unmount with cleanup"""
             if 'will_unmount' in lifecycle_callbacks:
                 lifecycle_callbacks['will_unmount'](self)
-            
+
             # Cleanup binding observers
             for observer in self._binding_observers.values():
                 observer.dispose()
             self._binding_observers.clear()
-            
+
             # Cleanup computed reactives
             for computed in self._computed_reactives.values():
                 computed.dispose()
             self._computed_reactives.clear()
-            
+
             # Cleanup debounce tasks
             if hasattr(self, '_debounce_tasks'):
                 for task in self._debounce_tasks.values():
                     task.cancel()
-            
+
             if original_will_unmount:
                 original_will_unmount(self)
-            
+
             logger.debug(f"Unmounted reactive control {ControlClass.__name__}")
-        
+
         # Inject new methods
         ControlClass.__init__ = __init__
         ControlClass._validate_reactive_attributes = _validate_reactive_attributes
@@ -457,7 +455,7 @@ def reactive_control(
         ControlClass.will_unmount = will_unmount
 
         return ControlClass
-    
+
     return decorator
 
 
@@ -499,8 +497,8 @@ def two_way_reactive(bindings: Dict[str, str]):
     """
     binding_configs = {
         prop: BindingConfig(
-            reactive_attr = rx_attr,
-            binding_type = BindingType.TWO_WAY
+            reactive_attr=rx_attr,
+            binding_type=BindingType.TWO_WAY
         )
         for prop, rx_attr in bindings.items()
     }
@@ -532,7 +530,7 @@ def computed_reactive(**computed_props):
             compute_fn=lambda self=None, fn=compute_fn: fn(self),
             dependencies=['rx_count']  # You'd need to auto-detect this
         )
-    
+
     return reactive_control(computed_bindings=computed_bindings)
 
 
@@ -540,13 +538,13 @@ def computed_reactive(**computed_props):
 ##      REACTIVE FORM DECORATOR
 #####
 def reactive_form(
-    form_fields: Dict[str, str],
-    validation_rules: Optional[Dict[str,Union[str,List[FormFieldValidationRule]]]] = None,
-    on_submit: Optional[Union[Callable,str]] = None,
-    on_submit_success: Optional[Union[Callable,str]] = None,
-    on_submit_failed: Optional[Union[Callable,str]] = None,
-    on_submit_exception: Optional[Union[Callable,str]] = None,
-    auto_validate: bool = True
+        form_fields: Dict[str, str],
+        validation_rules: Optional[Dict[str, Union[str, List[FormFieldValidationRule]]]] = None,
+        on_submit: Optional[Union[Callable, str]] = None,
+        on_submit_success: Optional[Union[Callable, str]] = None,
+        on_submit_failed: Optional[Union[Callable, str]] = None,
+        on_submit_exception: Optional[Union[Callable, str]] = None,
+        auto_validate: bool = True
 ):
     """
     Creates a reactive form with validation and submission handling.
@@ -602,42 +600,42 @@ def reactive_form(
         # Other handler methods ...
     ```
     """
-    
+
     if validation_rules is None:
         validation_rules = {}
-    
+
     def decorator(FormClass):
         original_init = FormClass.__init__
-        
+
         # Add FletXWidget as parent
         FormClass.__bases__ = (*FormClass.__bases__, FletXWidget)
-        
+
         @wraps(original_init)
         def __init__(self, *args, **kwargs):
             original_init(self, *args, **kwargs)
             FletXWidget.__init__(self)
-            
+
             # Form state
             self._form_errors = {}
             self._validation_observers = []
-            
+
             # Setup form bindings
             self._setup_form_bindings()
-            
+
             # Add form methods
             self.get_values = lambda: {
                 field: getattr(self, rx_attr).value
                 for field, rx_attr in form_fields.items()
             }
-            
+
             self.get_errors = lambda: self._form_errors.copy()
-            
+
             self.is_valid = lambda: len(self._form_errors) == 0
-            
+
             self.submit = lambda: self._handle_submit()
-            
+
             self.validate_field = lambda field: self._validate_field(field)
-            
+
             self.validate_all = lambda: self._validate_all_fields()
 
         def _setup_form_bindings(self):
@@ -645,14 +643,15 @@ def reactive_form(
 
             for field, rx_attr in form_fields.items():
                 reactive_obj = getattr(self, rx_attr)
-                
+
                 if auto_validate and field in validation_rules:
                     # Setup validation on change
                     def create_validator(field_name):
                         def validator():
                             self._validate_field(field_name)
+
                         return validator
-                    
+
                     observer = reactive_obj.listen(create_validator(field), auto_dispose=False)
                     self._validation_observers.append(observer)
 
@@ -661,7 +660,7 @@ def reactive_form(
 
             if field not in validation_rules:
                 return True
-            
+
             rx_attr = form_fields[field]
             value = getattr(self, rx_attr).value
 
@@ -676,9 +675,9 @@ def reactive_form(
                 is_valid = rules(value)
 
             # 2. FormClass Callable attribute (function)
-            elif isinstance(rules, str): 
-                if hasattr(self,rules):
-                    is_valid = getattr(self,rules)(value)
+            elif isinstance(rules, str):
+                if hasattr(self, rules):
+                    is_valid = getattr(self, rules)(value)
 
                 # otherwise ignore the rule
                 else:
@@ -688,14 +687,14 @@ def reactive_form(
                     )
 
             # 3. There are multiple rules for the field (FormFieldValidationRules)
-            elif isinstance(rules,list):
+            elif isinstance(rules, list):
                 checks: List[bool] = []
                 for rule in rules:
                     check: bool = True
                     # FormClass Callable attribute (function)
                     if isinstance(rule.validate_fn, str):
-                        if hasattr(self,rule.validate_fn):
-                            check = getattr(self,rule.validate_fn)(value)
+                        if hasattr(self, rule.validate_fn):
+                            check = getattr(self, rule.validate_fn)(value)
 
                         # otherwise ignore the rule
                         else:
@@ -709,23 +708,23 @@ def reactive_form(
 
                     # Add rule message if rule fails
                     if not check:
-                        errors.append(rule.err_message.format(field = field, value = value)) 
+                        errors.append(rule.err_message.format(field=field, value=value))
 
-                    # finally append validatio result
+                        # finally append validatio result
                     checks.append(check)
                 is_valid = all(checks)
-            
+
             if is_valid:
                 self._form_errors.pop(field, None)
             else:
                 self._form_errors[field] = errors or f"Invalid {field} value"
                 if auto_validate:
                     self._call_handler(on_submit_failed, self.get_errors())
-            
+
             # Update form validity if rx_is_valid exists
             if hasattr(self, 'rx_is_valid'):
                 self.rx_is_valid.value = self.is_valid()
-            
+
             logger.debug(f"Validated {field}: {is_valid}")
             return is_valid
 
@@ -755,17 +754,17 @@ def reactive_form(
                 logger.info("Form validated successfully")
 
                 if on_submit:
-                    self._call_handler(on_submit,self)
+                    self._call_handler(on_submit, self)
 
                 if on_submit_success:
-                    self._call_handler(on_submit_success,self.get_values())
+                    self._call_handler(on_submit_success, self.get_values())
 
             except Exception as e:
                 logger.exception("Unexpected error during form submission")
                 if on_submit_exception:
-                    self._call_handler(on_submit_exception,e)
-            
-        def _call_handler(self, handler: Union[str,Callable[[],None]], *args, **kwargs):
+                    self._call_handler(on_submit_exception, e)
+
+        def _call_handler(self, handler: Union[str, Callable[[], None]], *args, **kwargs):
             """Cal the given handler (method name or callable)."""
 
             if isinstance(handler, str):
@@ -775,10 +774,10 @@ def reactive_form(
                         f'{self.__class__.__name__} has no callable method "{handler}"'
                     )
                 method(*args, **kwargs)
-            
+
             elif callable(handler):
                 handler(*args, **kwargs)
-            
+
             else:
                 raise TypeError(
                     f"{handler} must be a string (method name) or a callable"
@@ -795,7 +794,7 @@ def reactive_form(
                 reactive_obj = getattr(self, rx_obj, None)
                 if reactive_obj and hasattr(reactive_obj, 'dispose'):
                     reactive_obj.dispose()
-            
+
             super(FormClass, self).will_unmount()
             FletXWidget.will_unmount(self)
 
@@ -809,7 +808,7 @@ def reactive_form(
         FormClass.will_unmount = will_unmount
 
         return FormClass
-    
+
     return decorator
 
 
@@ -817,10 +816,10 @@ def reactive_form(
 ##      REACTIVE LIST WIDGET DECORATOR
 #####
 def reactive_list(
-    items_attr: str,
-    item_builder: Callable[[Any, int], ft.Control],
-    empty_builder: Optional[Callable[[], ft.Control]] = None,
-    animate_changes: bool = True
+        items_attr: str,
+        item_builder: Callable[[Any, int], ft.Control],
+        empty_builder: Optional[Callable[[], ft.Control]] = None,
+        animate_changes: bool = True
 ):
     """
     Creates a reactive list widget that automatically updates when items change.
@@ -845,19 +844,19 @@ def reactive_list(
             super().__init__()
     ```
     """
-    
+
     def decorator(ListClass):
         original_init = ListClass.__init__
         original_did_mount = getattr(ListClass, 'did_mount', None)
-        
+
         # Add FletXWidget as parent
         ListClass.__bases__ = (*ListClass.__bases__, FletXWidget)
-        
+
         @wraps(original_init)
         def __init__(self, *args, **kwargs):
             original_init(self, *args, **kwargs)
             FletXWidget.__init__(self)
-            
+
             self._list_observer = None
             self._current_controls = []
 
@@ -868,12 +867,12 @@ def reactive_list(
         def _setup_list_binding(self):
             """Setup reactive binding for list items"""
             items_list = getattr(self, items_attr)
-            
+
             if not isinstance(items_list, RxList):
                 raise TypeError(f"{items_attr} must be an RxList")
-            
+
             self._list_observer = items_list.listen(self._rebuild_list, auto_dispose=False)
-            
+
             # Initial build
             self._rebuild_list()
 
@@ -881,28 +880,40 @@ def reactive_list(
             """Rebuild the list controls"""
             if not self._is_mounted:
                 return
-            
+
             items_list = getattr(self, items_attr)
             items = items_list.value
-            
+
             # Clear current controls
-            self.controls.clear()
+            if is_datatable:
+                self.rows.clear()
+            else:
+                self.controls.clear()
+
             self._current_controls.clear()
-            
+
             # Build new controls
             if not items and empty_builder:
                 empty_control = empty_builder()
-                self.controls.append(empty_control)
+                if is_datatable:
+                    self.rows.append(empty_control)
+                else:
+                    self.controls.append(empty_control)
+
                 self._current_controls.append(empty_control)
             else:
                 for index, item in enumerate(items):
                     control = item_builder(item, index)
-                    self.controls.append(control)
+                    if is_datatable:
+                        self.rows.append(control)
+                    else:
+                        self.controls.append(control)
+
                     self._current_controls.append(control)
-            
+
             # Update the widget
             self.update()
-            
+
             logger.debug(f"Rebuilt list with {len(items)} items")
 
         def did_mount(self):
@@ -916,7 +927,7 @@ def reactive_list(
 
             # Setup list binding, once the widget is mounted
             self._setup_list_binding()
-            
+
             logger.debug(f"Mounted reactive List control {ListClass.__name__}")
 
         def will_unmount(self):
@@ -924,9 +935,9 @@ def reactive_list(
             if self._list_observer:
                 self._list_observer.dispose()
                 self._list_observer = None
-            
+
             # Call Super's will_mount method if any
-            super(ListClass,self).will_unmount()
+            super(ListClass, self).will_unmount()
             FletXWidget.will_unmount(self)
 
         # Inject methods
@@ -937,7 +948,7 @@ def reactive_list(
         ListClass.will_unmount = will_unmount
 
         return ListClass
-    
+
     return decorator
 
 
@@ -945,11 +956,11 @@ def reactive_list(
 ##      REACTIVE STATE MACHINE DECORATOR
 ####
 def reactive_state_machine(
-    states: Enum,
-    initial_state: Enum,
-    transitions: Dict[Tuple[Enum, str], Enum],
-    state_attr: str = 'rx_state',
-    on_state_change: Optional[Callable[[Enum, Enum], None]] = None
+        states: Enum,
+        initial_state: Enum,
+        transitions: Dict[Tuple[Enum, str], Enum],
+        state_attr: str = 'rx_state',
+        on_state_change: Optional[Callable[[Enum, Enum], None]] = None
 ):
     """
     Creates a reactive state machine for widgets.
@@ -986,29 +997,29 @@ def reactive_state_machine(
             super().__init__()
     ```
     """
-    
+
     def decorator(WidgetClass):
         original_init = WidgetClass.__init__
-        
+
         # Add FletXWidget as parent
         WidgetClass.__bases__ = (*WidgetClass.__bases__, FletXWidget)
-        
+
         @wraps(original_init)
         def __init__(self, *args, **kwargs):
             # Initialize state reactive
             state_reactive = RxStr(initial_state.value)
             setattr(self, state_attr, state_reactive)
-            
+
             original_init(self, *args, **kwargs)
             FletXWidget.__init__(self)
-            
+
             self._state_observer = None
             self._setup_state_machine()
 
         def _setup_state_machine(self):
             """Setup state machine reactive binding"""
             state_reactive = getattr(self, state_attr)
-            
+
             if on_state_change:
                 def state_change_handler():
                     current_state_value = state_reactive.value
@@ -1018,9 +1029,9 @@ def reactive_state_machine(
                     )
                     if current_state:
                         on_state_change(None, current_state)  # TODO: Track previous state
-                
+
                 self._state_observer = state_reactive.listen(
-                    state_change_handler, 
+                    state_change_handler,
                     auto_dispose=False
                 )
 
@@ -1032,24 +1043,24 @@ def reactive_state_machine(
                 (s for s in states if s.value == current_state_value),
                 None
             )
-            
+
             if not current_state:
                 logger.error(f"Invalid current state: {current_state_value}")
                 return False
-            
+
             transition_key = (current_state, action)
             if transition_key not in transitions:
                 logger.warning(f"Invalid transition: {current_state} + {action}")
                 return False
-            
+
             new_state = transitions[transition_key]
             old_state = current_state
-            
+
             state_reactive.value = new_state.value
-            
+
             if on_state_change:
                 on_state_change(old_state, new_state)
-            
+
             logger.info(f"State transition: {old_state} -> {new_state} (action: {action})")
             return True
 
@@ -1072,7 +1083,7 @@ def reactive_state_machine(
             if self._state_observer:
                 self._state_observer.dispose()
                 self._state_observer = None
-            
+
             if hasattr(super(), 'will_unmount'):
                 super().will_unmount()
 
@@ -1085,5 +1096,5 @@ def reactive_state_machine(
         WidgetClass.will_unmount = will_unmount
 
         return WidgetClass
-    
+
     return decorator
