@@ -206,6 +206,7 @@ class TemplateManager:
         try:
             # Get relative path from templates directory
             relative_path = template_file.relative_to(self.templates_dir)
+            relative_path = str(relative_path).replace("\\", "/")  # change the path format for jinja
             template = self.jinja_env.get_template(str(relative_path))
             return template.render(**context)
         # Template not found

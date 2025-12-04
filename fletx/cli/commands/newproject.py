@@ -3,6 +3,7 @@ Command to create new FletX projects.
 """
 
 import os
+import traceback
 from pathlib import Path
 from typing import Optional
 
@@ -123,6 +124,7 @@ class NewProjectCommand(TemplateCommand):
         try:
             # Generate project from template
             print(f"Creating new FletX project '{name}'...")
+
             template_manager.generate_from_template(
                 template, target_dir, context, overwrite
             )
@@ -140,6 +142,7 @@ class NewProjectCommand(TemplateCommand):
             self._print_next_steps(name, target_dir, no_install)
 
         except Exception as e:
+            print(traceback.format_exc())
             raise CommandExecutionError(f"Failed to create project: {e}")
 
     def _create_project_config(self, project_dir: Path, context: dict) -> None:

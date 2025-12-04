@@ -1,0 +1,3 @@
+# Core dependencies
+flet>=0.28.3
+git+https://github.com/Cyber-Tetsuki/FletX-forked-copy
